@@ -1,0 +1,121 @@
+$date
+	Wed May 20 10:11:33 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module tb_mem_map_regfile $end
+$var wire 8 ! rdata [7:0] $end
+$var reg 2 " addr [1:0] $end
+$var reg 1 # clk $end
+$var reg 1 $ rd_en $end
+$var reg 1 % reset $end
+$var reg 8 & wdata [7:0] $end
+$var reg 1 ' wr_en $end
+$scope module dut $end
+$var wire 2 ( addr [1:0] $end
+$var wire 1 # clk $end
+$var wire 1 $ rd_en $end
+$var wire 1 % reset $end
+$var wire 8 ) wdata [7:0] $end
+$var wire 1 ' wr_en $end
+$var reg 8 * config_reg [7:0] $end
+$var reg 8 + ctrl_reg [7:0] $end
+$var reg 8 , data_reg [7:0] $end
+$var reg 8 - rdata [7:0] $end
+$var reg 8 . status_reg [7:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b0 .
+b0 -
+b0 ,
+b0 +
+b0 *
+b0 )
+b0 (
+0'
+b0 &
+1%
+0$
+0#
+b0 "
+b0 !
+$end
+#5000
+1#
+#10000
+0#
+0%
+#15000
+1#
+#20000
+0#
+b10101010 &
+b10101010 )
+1'
+#25000
+b10101010 +
+1#
+#30000
+0#
+0'
+#35000
+1#
+#40000
+0#
+b1010101 &
+b1010101 )
+b1 "
+b1 (
+1'
+#45000
+b1010101 .
+1#
+#50000
+0#
+0'
+#55000
+1#
+#60000
+0#
+b0 "
+b0 (
+1$
+#65000
+b10101010 !
+b10101010 -
+1#
+#70000
+0#
+0$
+#75000
+1#
+#80000
+0#
+b1 "
+b1 (
+1$
+#85000
+b1010101 !
+b1010101 -
+1#
+#90000
+0#
+0$
+#95000
+1#
+#100000
+0#
+#105000
+1#
+#110000
+0#

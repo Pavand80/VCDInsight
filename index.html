@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VCDInsight — Waveform Analysis Platform</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas id="bgCanvas"></canvas>
+
+    <!-- HEX STRIP -->
+    <div class="hex-strip" id="hexStrip"></div>
+
+    <!-- ═════════ PAGE 1 : UPLOAD ═════════ -->
+    <div class="page" id="page1">
+      <div class="p1-center">
+        <div class="logo">
+          <span id="logoText"></span><span class="cursor">█</span>
+        </div>
+        <div class="logo-sub" id="logoSub"></div>
+
+        <div class="divider-line"></div>
+
+        <!-- UPLOAD SLOTS -->
+        <div class="slots">
+          <!-- Slot 1 : Simulation (required) -->
+          <div class="upload-box slot" id="slotSim">
+            <div class="ub-corner tl"></div>
+            <div class="ub-corner tr"></div>
+            <div class="ub-corner bl"></div>
+            <div class="ub-corner br"></div>
+            <div class="ub-label">// SIMULATION &nbsp;·&nbsp; REQUIRED</div>
+            <div class="ub-icon" id="slotSimIcon">↑</div>
+            <div class="ub-text" id="slotSimText">
+              Drop .vcd or .zip, or click to upload
+            </div>
+            <div class="ub-sub" id="slotSimSub">
+              Value Change Dump from any simulator
+            </div>
+            <button class="slot-clear hidden" id="slotSimClear" type="button">
+              ✕ REMOVE
+            </button>
+            <input type="file" id="fileSim" accept=".vcd,.zip" hidden />
+          </div>
+
+          <!-- Slot 2 : Second capture (optional) -->
+          <div class="upload-box slot slot-optional" id="slotCmp">
+            <div class="ub-corner tl"></div>
+            <div class="ub-corner tr"></div>
+            <div class="ub-corner bl"></div>
+            <div class="ub-corner br"></div>
+            <div class="ub-label">
+              // FPGA / SECOND CAPTURE &nbsp;·&nbsp; OPTIONAL
+            </div>
+            <div class="ub-icon" id="slotCmpIcon">↑</div>
+            <div class="ub-text" id="slotCmpText">
+              Drop .vcd to compare against simulation
+            </div>
+            <div class="ub-sub" id="slotCmpSub">
+              Unlocks the Sim vs FPGA comparison
+            </div>
+            <button class="slot-clear hidden" id="slotCmpClear" type="button">
+              ✕ REMOVE
+            </button>
+            <input type="file" id="fileCmp" accept=".vcd" hidden />
+          </div>
+        </div>
+
+        <!-- ANALYZE -->
+        <button class="analyze-btn" id="analyzeBtn" type="button" disabled>
+          ANALYZE
+        </button>
+
+        <!-- PROGRESS -->
+        <div class="progress-wrap hidden" id="progressWrap">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressBar"></div>
+          </div>
+          <div class="progress-text" id="progressText">PREPARING...</div>
+        </div>
+
+        <!-- ERROR -->
+        <div class="error-msg hidden" id="errorMsg"></div>
+
+        <div class="three-points">
+          <div class="point">
+            <span class="pt-num">01 //</span>
+            <span class="pt-text" id="pt1"></span>
+          </div>
+          <div class="point">
+            <span class="pt-num">02 //</span>
+            <span class="pt-text" id="pt2"></span>
+          </div>
+          <div class="point">
+            <span class="pt-num">03 //</span>
+            <span class="pt-text" id="pt3"></span>
+          </div>
+        </div>
+
+        <div class="p1-footer">
+          <span>VCDInsight v1.0</span>
+          <span class="dot-sep">◆</span>
+          <span>Waveform Analysis Platform</span>
+          <span class="dot-sep">◆</span>
+          <span>Rule-Based Engine</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═════════ ZIP CHOOSER ═════════ -->
+    <div class="chooser-overlay hidden" id="chooserOverlay">
+      <div class="chooser-box">
+        <div class="chooser-title">// MULTIPLE VCD FILES FOUND</div>
+        <div class="chooser-note">
+          The zip contains more than one VCD. Choose which file is the
+          simulation and which (optional) is the second capture.
+        </div>
+
+        <div class="chooser-row">
+          <label class="chooser-label" for="chooserSim">SIMULATION</label>
+          <select class="chooser-select" id="chooserSim"></select>
+        </div>
+        <div class="chooser-row">
+          <label class="chooser-label" for="chooserCmp">SECOND CAPTURE</label>
+          <select class="chooser-select" id="chooserCmp"></select>
+        </div>
+
+        <div class="chooser-error hidden" id="chooserError"></div>
+
+        <div class="chooser-actions">
+          <button class="chooser-btn" id="chooserCancel" type="button">
+            CANCEL
+          </button>
+          <button class="chooser-btn chooser-ok" id="chooserOk" type="button">
+            CONFIRM
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSITION -->
+    <div class="transition-overlay" id="transOverlay"></div>
+
+    <!-- ═════════ PAGE 2 : MODULES ═════════ -->
+    <div class="page hidden" id="page2">
+      <div class="p2-topbar">
+        <div class="tb-logo">VCD<span>Insight</span></div>
+        <div class="tb-divider"></div>
+        <div class="tb-file" id="tbFile">// NO FILE LOADED</div>
+        <div class="tb-right">
+          <div class="tb-status">
+            <span class="sdot"></span>
+            <span id="tbStatusText">SYSTEM READY</span>
+          </div>
+          <button class="topbar-back-btn" id="topbarBackBtn" type="button">
+            ← UPLOAD NEW FILE
+          </button>
+        </div>
+      </div>
+
+      <div class="p2-content" id="p2Content">
+        <div class="p2-header" id="p2Header">
+          <div class="p2-title">// ANALYSIS_MODULES</div>
+          <div class="p2-subtitle">Select a module to begin analysis</div>
+        </div>
+
+        <div class="blocks-list" id="blocksList">
+          <div class="block-item" data-block="1">
+            <div class="bi-left"><div class="bi-num">01</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Waveform Viewer</div>
+              <div class="bi-desc">
+                Interactive waveforms with zoom, cursors and the signal
+                inspector
+              </div>
+            </div>
+            <div class="bi-tag">VIEWER</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="2">
+            <div class="bi-left"><div class="bi-num">02</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Signal Overview</div>
+              <div class="bi-desc">
+                All signals — name, scope, bit width and detected role
+              </div>
+            </div>
+            <div class="bi-tag">SIGNALS</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="3">
+            <div class="bi-left"><div class="bi-num">03</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Signal Health</div>
+              <div class="bi-desc">
+                Activity, X / Z states, stuck signals and glitches — reset aware
+              </div>
+            </div>
+            <div class="bi-tag">HEALTH</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="4">
+            <div class="bi-left"><div class="bi-num">04</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Transactions</div>
+              <div class="bi-desc">
+                Handshakes, latency and wait cycles detected from the waveform
+              </div>
+            </div>
+            <div class="bi-tag">TRANSACTIONS</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="5">
+            <div class="bi-left"><div class="bi-num">05</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Rules &amp; Checks</div>
+              <div class="bi-desc">
+                Build rules and get PASS / FAIL with exact timestamps
+              </div>
+            </div>
+            <div class="bi-tag">RULES</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="6">
+            <div class="bi-left"><div class="bi-num">06</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Sim vs FPGA</div>
+              <div class="bi-desc">
+                Compare two captures cycle by cycle and find the first mismatch
+              </div>
+            </div>
+            <div class="bi-tag">COMPARE</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="7">
+            <div class="bi-left"><div class="bi-num">07</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Final Verdict</div>
+              <div class="bi-desc">
+                PASS / WARNING / FAIL with reasons and the full run story table
+              </div>
+            </div>
+            <div class="bi-tag">VERDICT</div>
+            <div class="bi-arrow">→</div>
+          </div>
+
+          <div class="block-item" data-block="8">
+            <div class="bi-left"><div class="bi-num">08</div></div>
+            <div class="bi-info">
+              <div class="bi-title">Export Report</div>
+              <div class="bi-desc">
+                Download the full analysis as a formatted report
+              </div>
+            </div>
+            <div class="bi-tag">EXPORT</div>
+            <div class="bi-arrow">↓</div>
+          </div>
+        </div>
+
+        <!-- PANEL -->
+        <div class="block-panel hidden" id="blockPanel">
+          <button class="back-btn" id="backBtn" type="button">
+            ← BACK TO MODULES
+          </button>
+          <div class="panel-content" id="panelContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="lib/jszip.min.js"></script>
+    <script src="js/zipload.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/roles.js"></script>
+    <script src="js/health.js"></script>
+    <script src="js/ui-signals.js"></script>
+    <script src="js/ui-signals.js"></script>
+    <script src="js/viewer.js"></script>
+    <script src="js/transactions.js"></script>
+    <script src="js/ui-verdict.js"></script>
+    <script src="js/rules.js"></script>
+    <script src="js/ui-rules.js"></script>
+    <script src="js/compare.js"></script>
+    <script src="js/ui-compare.js"></script>
+    <script src="js/summary.js"></script>
+    <script src="js/report.js"></script>
+    <script src="js/ui-export.js"></script>
+  </body>
+</html>

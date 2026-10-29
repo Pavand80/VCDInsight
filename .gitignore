@@ -1,0 +1,6 @@
+.env
+backend/.env
+backend/summary_cache.json
+backend/__pycache__/
+old/
+.vscode/
