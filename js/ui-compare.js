@@ -1,5 +1,5 @@
 /* VCDInsight — ui-compare.js (Step 6)
-   Module 06: Sim vs FPGA (second capture).                                  */
+   Module 06: Sim vs Second Capture (second capture).                                  */
 "use strict";
 
 (function () {
@@ -110,7 +110,7 @@
         " %";
     }
     return (
-      '<div class="panel-title">// SIM VS FPGA</div>' +
+      '<div class="panel-title">// SIM VS SECOND CAPTURE</div>' +
       '<div class="panel-sub">Simulation (' +
       esc(st.sim.fileName) +
       ") against the second capture (" +
@@ -503,18 +503,18 @@
     var st = VCD.state;
     if (!st.sim || !st.analysis)
       return msgHtml(
-        "SIM VS FPGA",
+        "SIM VS SECOND CAPTURE",
         "No analysis data yet. Go back and analyse a file first.",
       );
     if (!st.cmp)
       return msgHtml(
-        "SIM VS FPGA",
+        "SIM VS SECOND CAPTURE",
         "This module is locked. Go back to the first page and add a second capture (for example an FPGA VCD) to unlock the comparison.",
       );
     var C = st.compare;
     if (!C)
       return msgHtml(
-        "SIM VS FPGA",
+        "SIM VS SECOND CAPTURE",
         "The comparison did not run. Go back and analyse the files again.",
       );
     if (ui.C !== C) {

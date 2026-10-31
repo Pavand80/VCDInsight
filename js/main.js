@@ -271,7 +271,7 @@ const slots = {
     clear: document.getElementById("slotCmpClear"),
     input: document.getElementById("fileCmp"),
     defText: "Drop .vcd to compare against simulation",
-    defSub: "Unlocks the Sim vs FPGA comparison",
+    defSub: "Unlocks the comparison module",
     file: null,
   },
 };
@@ -822,7 +822,7 @@ const MODULE_INFO = {
     note: "Rule builder with PASS / FAIL and exact timestamps.",
   },
   6: {
-    title: "SIM VS FPGA",
+    title: "SIM VS SECOND CAPTURE",
     step: 6,
     note: "Cycle-aligned comparison of two captures.",
   },

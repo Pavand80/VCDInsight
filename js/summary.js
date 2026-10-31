@@ -32,11 +32,11 @@
     rule_failed:
       "Open Rules & Checks and use the jump link to see the exact moment each rule failed.",
     compare_mismatch:
-      "Open Sim vs FPGA and check the signals at the first mismatch cycle; reset, timing and initial values often explain simulation-versus-hardware differences.",
+      "Open Sim vs Second Capture and check the signals at the first mismatch cycle; reset, timing and initial values often explain simulation-versus-hardware differences.",
     compare_unknown:
       "Only unknown values differ; check the power-up and reset behaviour of the hardware capture.",
     compare_sequence:
-      "Open Sim vs FPGA and compare the first differing transaction.",
+      "Open Sim vs Second Capture and compare the first differing transaction.",
     clock: "Check how the clock is generated.",
     reset: "Check how and when reset is applied and released.",
   };

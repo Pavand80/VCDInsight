@@ -786,7 +786,7 @@
             "compare_unmatched",
             null,
             un +
-              " simulation signal(s) have no match in the second capture and were not compared (see the Sim vs FPGA module).",
+              " simulation signal(s) have no match in the second capture and were not compared (see the Sim vs Second Capture module).",
           );
       }
     }
