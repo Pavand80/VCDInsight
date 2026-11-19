@@ -349,6 +349,27 @@
         hl.summary.nets +
         " nets.",
     );
+    var oc = a.oracle;
+    if (oc) {
+      checks.push(
+        oc.passed
+          ? "Testbench self-check: the counter " +
+              oc.name +
+              " stayed at 0" +
+              (oc.tests ? " over " + oc.tests.value + " tests" : "") +
+              "; " +
+              oc.waived +
+              " heuristic finding(s) were waived."
+          : "Testbench self-check: the counter " +
+              oc.name +
+              " reached " +
+              oc.peak +
+              (oc.tests ? " of " + oc.tests.value + " tests" : "") +
+              " (first increase at " +
+              ft(oc.firstRise) +
+              ").",
+      );
+    }
     if (sm && sm.ifaceCount) {
       checks.push(
         "Transactions: " +

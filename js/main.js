@@ -638,7 +638,15 @@ analyzeBtn.addEventListener("click", async function () {
         source: "transactions",
       });
     }
-    VCD.state.analysis = { roles: rd, health: hl, tx: tx };
+    // The oracle must run BEFORE the findings are copied below,
+    // because its waiver changes them first.
+    let oc = null;
+    try {
+      oc = VCD.oracle.run(sim, rd, hl, tx);
+    } catch (ocErr) {
+      console.error(ocErr);
+    }
+    VCD.state.analysis = { roles: rd, health: hl, tx: tx, oracle: oc };
     hl.findings.forEach(function (f) {
       VCD.addFinding({
         severity: f.severity,
@@ -659,6 +667,19 @@ analyzeBtn.addEventListener("click", async function () {
         source: "transactions",
       });
     });
+    if (oc) {
+      oc.findings.forEach(function (f) {
+        VCD.addFinding({
+          severity: f.severity,
+          type: f.type,
+          signal: f.signal,
+          time: f.time,
+          netIds: f.netIds,
+          message: f.message,
+          source: "oracle",
+        });
+      });
+    }
     if (cmp) {
       stage = "comparison";
       try {
