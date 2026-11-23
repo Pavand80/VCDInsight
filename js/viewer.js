@@ -1,32 +1,90 @@
-/* VCDInsight — viewer.js (Step 3)
+/* VCDInsight — viewer.js (VCDrom-style look + handshake marks)
    Module 01: Waveform Viewer + Signal Inspector. Canvas based, any VCD. */
 "use strict";
 
 (function () {
-  var RULER = 34,
-    ROWH = 26,
-    GROUPH = 24,
+  var RULER = 40,
+    ROWH = 32,
+    GROUPH = 28,
     SBW = 10;
-  var COL = {
-    bg: "#ffffff",
-    nameBg: "#f3f7ff",
-    group: "#e6eefc",
-    line: "rgba(31,95,224,0.08)",
-    grid: "rgba(31,95,224,0.08)",
-    sel: "rgba(31,95,224,0.12)",
-    border: "#c6d6f2",
-    green: "#00cc66",
-    blue: "#1f5fe0",
-    red: "#ff3344",
-    yellow: "#ffaa00",
-    redFill: "rgba(255,51,68,0.15)",
-    text: "#0f2150",
-    muted: "#5b6b8c",
-    bright: "#2a4075",
-    dense: "rgba(60,90,150,0.45)",
-    ruler: "#eaf1ff",
+  var MONO = "ui-monospace, Consolas, Menlo, 'Courier New', monospace";
+
+  var THEMES = {
+    light: {
+      bg: "#ffffff",
+      nameBg: "#f3f7ff",
+      group: "#e6eefc",
+      base: "rgba(0,150,80,0.35)",
+      grid: "rgba(31,95,224,0.07)",
+      edge: "rgba(31,95,224,0.10)",
+      sel: "rgba(31,95,224,0.12)",
+      border: "#c6d6f2",
+      sig: "#00a050",
+      sigFill: "rgba(0,160,80,0.10)",
+      busLine: "#1f5fe0",
+      busFill: "rgba(31,95,224,0.06)",
+      red: "#e0283a",
+      redFill: "rgba(224,40,58,0.14)",
+      yellow: "#d98900",
+      text: "#0f2150",
+      muted: "#5b6b8c",
+      bright: "#2a4075",
+      dense: "rgba(60,90,150,0.45)",
+      ruler: "#eaf1ff",
+      hover: "rgba(15,33,80,0.45)",
+      cursorA: "#1f5fe0",
+      cursorB: "#d98900",
+      cursorText: "#ffffff",
+      bubble: "#fff3c4",
+      bubbleText: "#0f2150",
+      wait: "rgba(255,170,0,0.28)",
+      hs: "#1f5fe0",
+      scrollTrack: "rgba(31,95,224,0.08)",
+      scrollThumb: "rgba(31,95,224,0.35)",
+      scope: "#0b6b3a",
+    },
+    dark: {
+      bg: "#0a0a0a",
+      nameBg: "#101010",
+      group: "#141a14",
+      base: "rgba(60,220,120,0.35)",
+      grid: "rgba(255,255,255,0.07)",
+      edge: "rgba(255,255,255,0.08)",
+      sel: "rgba(255,255,100,0.10)",
+      border: "#2a2a2a",
+      sig: "#2edc78",
+      sigFill: "rgba(46,220,120,0.10)",
+      busLine: "#2fd0e8",
+      busFill: "rgba(47,208,232,0.06)",
+      red: "#ff4455",
+      redFill: "rgba(255,68,85,0.22)",
+      yellow: "#ffc400",
+      text: "#fff3b0",
+      muted: "#9a9a8a",
+      bright: "#e8e8d0",
+      dense: "rgba(200,200,200,0.45)",
+      ruler: "#101010",
+      hover: "rgba(255,255,255,0.45)",
+      cursorA: "#ffeb3b",
+      cursorB: "#ff9800",
+      cursorText: "#000000",
+      bubble: "#ffeb3b",
+      bubbleText: "#000000",
+      wait: "rgba(255,170,0,0.30)",
+      hs: "#ffeb3b",
+      scrollTrack: "rgba(255,255,255,0.06)",
+      scrollThumb: "rgba(255,255,255,0.28)",
+      scope: "#4cd68a",
+    },
   };
-  var FONT = "'Times New Roman', Times, serif";
+  var COL = {};
+  function applyTheme(name) {
+    var T = THEMES[name] || THEMES.light;
+    Object.keys(T).forEach(function (k) {
+      COL[k] = T[k];
+    });
+  }
+  applyTheme("light");
 
   var ROLE_ORDER = [
     "clock",
@@ -121,14 +179,12 @@
     }
     return r;
   }
-
   function nib(g) {
     if (/^x+$/.test(g)) return "x";
     if (/^z+$/.test(g)) return "z";
     if (/[xz]/.test(g)) return "X";
     return parseInt(g, 2).toString(16).toUpperCase();
   }
-
   function fmtVal(v, width, radix, isReal) {
     if (isReal) return v;
     if (width === 1) return v;
@@ -152,18 +208,15 @@
     }
     return out.replace(/^0+(?=[0-9A-F])/, "");
   }
-
   function niceStep(raw) {
     var p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
     var f = raw / p;
     return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
   }
-
   function roleLabel(r) {
     var t = ROLE_LABEL[r.role] || r.role;
     return r.sub && r.sub !== t ? t + " · " + r.sub : t;
   }
-
   function valueStats(net) {
     if (net.isReal) return null;
     var seen = {},
@@ -184,7 +237,6 @@
     }
     return { unique: uniq, seen: Object.keys(seen).sort(), min: min, max: max };
   }
-
   function defaultCollapsed(sim) {
     var c = {};
     sim.scopes.forEach(function (sc) {
@@ -192,7 +244,6 @@
     });
     return c;
   }
-
   function initState(sim) {
     var end = Math.max(1, sim.stats.endTime);
     return {
@@ -219,16 +270,17 @@
       dpr: 1,
       drag: null,
       sb: null,
+      theme: "light",
+      hs: true,
+      grid: true,
     };
   }
-
   function ensure() {
     var sim = VCD.state.sim;
     if (!sim) return null;
     if (!V || V.sim !== sim) V = initState(sim);
     return V;
   }
-
   function opt(v, label, cur) {
     return (
       '<option value="' +
@@ -240,9 +292,11 @@
       "</option>"
     );
   }
-  function btn(act, label) {
+  function btn(act, label, on) {
     return (
-      '<button class="tool-btn" type="button" data-act="' +
+      '<button class="tool-btn' +
+      (on ? " active" : "") +
+      '" type="button" data-act="' +
       act +
       '">' +
       label +
@@ -268,6 +322,12 @@
       btn("err", "FIRST ERROR") +
       btn("expand", "EXPAND ALL") +
       btn("collapse", "COLLAPSE ALL") +
+      btn("hs", "HANDSHAKES", S.hs) +
+      btn("grid", "CLOCK GRID", S.grid) +
+      '<select class="tool-input" id="vwTheme">' +
+      opt("light", "Light", S.theme) +
+      opt("dark", "Dark (VCDrom style)", S.theme) +
+      "</select>" +
       '<select class="tool-input" id="vwRadix">' +
       opt("hex", "HEX", S.radix) +
       opt("bin", "BIN", S.radix) +
@@ -284,6 +344,7 @@
       '<div class="viewer-wrap" id="vwWrap" style="position:relative"><canvas id="vwCanvas"></canvas>' +
       '<div id="vwTip" style="display:none;position:absolute;z-index:5;pointer-events:none;background:#1c1c2a;border:1px solid #363650;border-radius:4px;padding:6px 10px;font-size:0.9rem;max-width:380px;color:#e8e8f0"></div></div>' +
       '<div class="text-muted" id="vwStatus" style="margin-top:8px;font-size:0.95rem;min-height:1.4em"></div>' +
+      '<div class="text-muted" style="margin-top:2px;font-size:0.88rem">● = transfer accepted (valid and ready both high at the clock edge) · amber band = valid waiting for ready · faint lines = clock edges (zoom in to see them)</div>' +
       '<div id="vwInspector"></div>'
     );
   }
@@ -297,6 +358,8 @@
     var wrap = el.querySelector("#vwWrap"),
       canvas = el.querySelector("#vwCanvas");
     if (!wrap || !canvas) return;
+    applyTheme(S.theme);
+    wrap.style.background = COL.bg;
     var tip = el.querySelector("#vwTip"),
       statusEl = el.querySelector("#vwStatus");
     var insp = el.querySelector("#vwInspector"),
@@ -312,15 +375,56 @@
     S.drag = null;
     S.sb = null;
 
-    var netFirstSig = {};
+    var netFirstSig = {},
+      sigByName = {};
     sim.signals.forEach(function (s) {
       if (!(s.net in netFirstSig)) netFirstSig[s.net] = s.id;
+      if (!(s.fullName in sigByName)) sigByName[s.fullName] = s.id;
+      if (!(s.name in sigByName)) sigByName[s.name] = s.id;
     });
+    function netOfFinding(f) {
+      if (f.netIds && f.netIds.length && f.netIds[0] >= 0) return f.netIds[0];
+      if (f.signal && sigByName[f.signal] !== undefined)
+        return sim.signals[sigByName[f.signal]].net;
+      return -1;
+    }
     var markers = VCD.state.findings
       .filter(function (f) {
         return f.time !== null && f.time !== undefined;
       })
       .slice(0, 400);
+
+    /* clock rising edges, for the cycle grid */
+    var riseT = null;
+    if (clock && clock.periodic && clock.period > 0) {
+      var cn = sim.nets[sim.signals[clock.signalId].net];
+      riseT = [];
+      for (var q = 1; q < cn.t.length; q++)
+        if (cn.v[q] === "1" && cn.v[q - 1] === "0") riseT.push(cn.t[q]);
+    }
+
+    /* handshake marks: accepted transfers and waiting bands, per net */
+    var hsMarks = {},
+      hsStalls = {};
+    if (an.tx && an.tx.interfaces) {
+      an.tx.interfaces.forEach(function (f) {
+        var times = f.transfers.map(function (tr) {
+          return tr.time;
+        });
+        [f.validNet, f.readyNet].forEach(function (n) {
+          if (n >= 0) hsMarks[n] = (hsMarks[n] || []).concat(times);
+        });
+        if (f.validNet >= 0)
+          hsStalls[f.validNet] = (hsStalls[f.validNet] || []).concat(
+            f.stalls || [],
+          );
+      });
+      Object.keys(hsMarks).forEach(function (k) {
+        hsMarks[k].sort(function (a, b) {
+          return a - b;
+        });
+      });
+    }
 
     function ft(t) {
       return VCD.fmtTime(t, ts);
@@ -333,6 +437,19 @@
     }
     function xOf(t) {
       return NW + ((t - S.t0) / (S.t1 - S.t0)) * (S.w - NW);
+    }
+    function rr(x0, y0, x1, y1, r) {
+      ctx.beginPath();
+      ctx.moveTo(x0 + r, y0);
+      ctx.lineTo(x1 - r, y0);
+      ctx.quadraticCurveTo(x1, y0, x1, y0 + r);
+      ctx.lineTo(x1, y1 - r);
+      ctx.quadraticCurveTo(x1, y1, x1 - r, y1);
+      ctx.lineTo(x0 + r, y1);
+      ctx.quadraticCurveTo(x0, y1, x0, y1 - r);
+      ctx.lineTo(x0, y0 + r);
+      ctx.quadraticCurveTo(x0, y0, x0 + r, y0);
+      ctx.closePath();
     }
 
     /* ---- rows ---- */
@@ -373,14 +490,12 @@
       }
       return groups;
     }
-
     function clampScroll() {
       var viewH = Math.max(0, S.h - RULER);
       var max = Math.max(0, S.totalH - viewH);
       if (S.scrollY > max) S.scrollY = max;
       if (S.scrollY < 0) S.scrollY = 0;
     }
-
     function rebuild() {
       var groups = groupsList();
       S.groupKeys = groups.map(function (g) {
@@ -419,7 +534,6 @@
       S.totalH = y;
       clampScroll();
     }
-
     function rowAtY(y) {
       var yy = y - RULER + S.scrollY;
       for (var i = 0; i < S.rows.length; i++) {
@@ -428,7 +542,6 @@
       }
       return null;
     }
-
     function scrollToSig(id) {
       var viewH = S.h - RULER;
       for (var i = 0; i < S.rows.length; i++) {
@@ -500,19 +613,17 @@
     function jumpToFinding(f) {
       S.cA = f.time;
       S.msg = f.message;
-      if (
-        f.netIds &&
-        f.netIds[0] >= 0 &&
-        netFirstSig[f.netIds[0]] !== undefined
-      )
-        select(netFirstSig[f.netIds[0]], true);
+      var n = netOfFinding(f);
+      if (n >= 0 && netFirstSig[n] !== undefined) select(netFirstSig[n], true);
       jumpTo(f.time);
       updateStatus();
     }
     function firstError() {
-      var f = an.health.findings
+      var f = VCD.state.findings
         .filter(function (x) {
-          return x.severity === "error" && x.time !== null;
+          return (
+            x.severity === "error" && x.time !== null && x.time !== undefined
+          );
         })
         .sort(function (a, b) {
           return a.time - b.time;
@@ -542,11 +653,10 @@
       renderInspector();
       req();
     }
-
     function renderInspector() {
       if (S.selected < 0) {
         insp.innerHTML =
-          '<div class="inspector"><div class="inspector-row text-muted">Click a signal name to see what it is, what to look for, and what it did in this run. Colours: green line = 1-bit signal, blue = bus, red = X (unknown), yellow = Z (floating).</div></div>';
+          '<div class="inspector"><div class="inspector-row text-muted">Click a signal name to see what it is, what to look for, and what it did in this run. Colours: green line = 1-bit signal, blue cells = bus, red = X (unknown), yellow = Z (floating).</div></div>';
         return;
       }
       var esc = VCD.esc;
@@ -621,6 +731,12 @@
           row("VALUES", st.unique + " different values · " + mm);
         }
       }
+      if (hsMarks[sig.net])
+        row(
+          "HANDSHAKE",
+          hsMarks[sig.net].length +
+            " accepted transfer(s) marked with ● on this row",
+        );
 
       if (rec) {
         var xz = [];
@@ -647,7 +763,6 @@
             (rec.notes.length ? " — " + esc(rec.notes.join("; ")) : ""),
         );
       }
-
       if (S.cA !== null) {
         var i = idxAt(net.t, S.cA);
         row(
@@ -655,10 +770,12 @@
           i < 0 ? "no value yet" : val(net.v[i]),
         );
       }
-
       var fl = VCD.state.findings.filter(function (x) {
         return (
-          x.severity === "error" && x.time !== null && x.time !== undefined
+          (x.severity === "error" || x.severity === "warning") &&
+          x.time !== null &&
+          x.time !== undefined &&
+          netOfFinding(x) === sig.net
         );
       });
       if (fl.length) {
@@ -674,11 +791,7 @@
                 esc(ft(f.time)) +
                 "</button> " +
                 '<span class="badge badge-' +
-                (f.severity === "error"
-                  ? "critical"
-                  : f.severity === "warning"
-                    ? "warning"
-                    : "info") +
+                (f.severity === "error" ? "critical" : "warning") +
                 '">' +
                 f.severity.toUpperCase() +
                 "</span> " +
@@ -692,7 +805,6 @@
       h.push("</div>");
       insp.innerHTML = h.join("");
     }
-
     function updateStatus() {
       var parts = [];
       if (S.cA !== null) parts.push("A: " + ft(S.cA));
@@ -716,7 +828,7 @@
     function ticks() {
       var span = S.t1 - S.t0,
         ww = S.w - NW;
-      var step = Math.max(1, niceStep(span / Math.max(1, ww / 110)));
+      var step = Math.max(1, niceStep(span / Math.max(1, ww / 120)));
       var out = [],
         t = Math.ceil(S.t0 / step) * step,
         g = 0;
@@ -732,8 +844,8 @@
         v = net.v,
         n = t.length;
       if (!n) return;
-      var top = y + 6,
-        bot = y + h - 7,
+      var top = y + 7,
+        bot = y + h - 8,
         mid = (top + bot) / 2;
       var bus = net.width > 1 || net.isReal;
       var k = (S.w - NW) / (S.t1 - S.t0);
@@ -748,7 +860,15 @@
           dx0 = -1;
         }
       }
-      ctx.font = "13px " + FONT;
+      if (!bus) {
+        ctx.strokeStyle = COL.base;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(NW, bot + 0.5);
+        ctx.lineTo(S.w, bot + 0.5);
+        ctx.stroke();
+      }
+      ctx.font = "12px " + MONO;
       for (var i = i0; i < n; i++) {
         var ta = t[i];
         if (ta > S.t1) break;
@@ -770,20 +890,11 @@
         if (bus) {
           var isX = c.indexOf("x") !== -1,
             isZ = !isX && c.indexOf("z") !== -1;
-          var color = isX ? COL.red : isZ ? COL.yellow : COL.blue;
-          var sl = Math.min(4, (xbD - xaD) / 2);
-          ctx.beginPath();
-          ctx.moveTo(xaD, mid);
-          ctx.lineTo(xaD + sl, top);
-          ctx.lineTo(xbD - sl, top);
-          ctx.lineTo(xbD, mid);
-          ctx.lineTo(xbD - sl, bot);
-          ctx.lineTo(xaD + sl, bot);
-          ctx.closePath();
-          if (isX) {
-            ctx.fillStyle = COL.redFill;
-            ctx.fill();
-          }
+          var color = isX ? COL.red : isZ ? COL.yellow : COL.busLine;
+          var r = Math.min(4, (xbD - xaD) / 2, (bot - top) / 2);
+          rr(xaD + 0.5, top, xbD - 0.5, bot, r);
+          ctx.fillStyle = isX ? COL.redFill : COL.busFill;
+          ctx.fill();
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.5;
           ctx.stroke();
@@ -809,18 +920,22 @@
                 ? COL.red
                 : c === "z" || pc === "z"
                   ? COL.yellow
-                  : COL.green;
-            ctx.lineWidth = 1.5;
+                  : COL.sig;
+            ctx.lineWidth = 1.6;
             ctx.beginPath();
             ctx.moveTo(xa, py);
             ctx.lineTo(xa, yc);
             ctx.stroke();
           }
+          if (c === "1") {
+            ctx.fillStyle = COL.sigFill;
+            ctx.fillRect(xaD, top, xbD - xaD, bot - top);
+          }
           if (c === "x") {
             ctx.fillStyle = COL.redFill;
             ctx.fillRect(xaD, top, xbD - xaD, bot - top);
             ctx.strokeStyle = COL.red;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.6;
             ctx.beginPath();
             ctx.moveTo(xaD, top);
             ctx.lineTo(xbD, top);
@@ -828,8 +943,8 @@
             ctx.lineTo(xbD, bot);
             ctx.stroke();
           } else {
-            ctx.strokeStyle = c === "z" ? COL.yellow : COL.green;
-            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = c === "z" ? COL.yellow : COL.sig;
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(xaD, yc);
             ctx.lineTo(xbD, yc);
@@ -838,6 +953,42 @@
         }
       }
       flush();
+    }
+
+    function drawHandshake(netId, y, h) {
+      if (!S.hs) return;
+      var top = y + 7,
+        bot = y + h - 8,
+        i;
+      var per = clock && clock.periodic ? clock.period : 0;
+      var st = hsStalls[netId];
+      if (st && per > 0) {
+        ctx.fillStyle = COL.wait;
+        for (i = 0; i < st.length; i++) {
+          var s0 = st[i].start,
+            s1 = s0 + st[i].cycles * per;
+          if (s1 < S.t0 || s0 > S.t1) continue;
+          var xa = Math.max(NW, xOf(s0)),
+            xb = Math.min(S.w, xOf(s1));
+          if (xb > xa) ctx.fillRect(xa, top, Math.max(2, xb - xa), bot - top);
+        }
+      }
+      var m = hsMarks[netId];
+      if (m) {
+        var j = idxAt(m, S.t0);
+        if (j < 0) j = 0;
+        for (; j < m.length && m[j] <= S.t1; j++) {
+          var x = xOf(m[j]);
+          if (x < NW - 4 || x > S.w + 4) continue;
+          ctx.beginPath();
+          ctx.arc(x, top, 4, 0, Math.PI * 2);
+          ctx.fillStyle = COL.hs;
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = COL.bg;
+          ctx.stroke();
+        }
+      }
     }
 
     function vline(t, color, dash) {
@@ -870,6 +1021,21 @@
         if (x >= NW) ctx.fillRect(x, RULER, 1, viewH);
       });
 
+      /* clock edge grid (only when each cycle is wide enough to read) */
+      if (
+        S.grid &&
+        riseT &&
+        clock.period * ((S.w - NW) / (S.t1 - S.t0)) >= 14
+      ) {
+        var q0 = idxAt(riseT, S.t0);
+        if (q0 < 0) q0 = 0;
+        ctx.fillStyle = COL.edge;
+        for (var q = q0; q < riseT.length && riseT[q] <= S.t1; q++) {
+          var ex = Math.round(xOf(riseT[q]));
+          if (ex >= NW) ctx.fillRect(ex, RULER, 1, viewH);
+        }
+      }
+
       /* waveforms */
       ctx.save();
       ctx.beginPath();
@@ -887,18 +1053,20 @@
           ctx.fillStyle = COL.sel;
           ctx.fillRect(0, y, S.w, row.h);
         }
-        ctx.fillStyle = COL.line;
+        ctx.fillStyle = COL.edge;
         ctx.fillRect(0, y + row.h - 1, S.w, 1);
+        var sg = sim.signals[row.id];
         ctx.save();
         ctx.beginPath();
         ctx.rect(NW, y, S.w - NW, row.h);
         ctx.clip();
-        drawWave(sim.nets[sim.signals[row.id].net], y, row.h);
+        drawWave(sim.nets[sg.net], y, row.h);
+        drawHandshake(sg.net, y, row.h);
         ctx.restore();
       });
-      if (S.cB !== null) vline(S.cB, COL.yellow);
-      if (S.cA !== null) vline(S.cA, COL.blue);
-      if (S.hoverT !== null) vline(S.hoverT, "rgba(255,255,255,0.28)", [4, 4]);
+      if (S.cB !== null) vline(S.cB, COL.cursorB);
+      if (S.cA !== null) vline(S.cA, COL.cursorA);
+      if (S.hoverT !== null) vline(S.hoverT, COL.hover, [4, 4]);
       ctx.restore();
 
       /* name column */
@@ -916,8 +1084,8 @@
         if (row.type === "g") {
           ctx.fillStyle = COL.group;
           ctx.fillRect(0, y, NW, row.h);
-          ctx.fillStyle = COL.bright;
-          ctx.font = "bold 14px " + FONT;
+          ctx.fillStyle = COL.scope;
+          ctx.font = "italic bold 13px " + MONO;
           ctx.textAlign = "left";
           ctx.save();
           ctx.beginPath();
@@ -938,7 +1106,7 @@
           ctx.fillStyle = COL.sel;
           ctx.fillRect(0, y, NW, row.h);
         }
-        ctx.fillStyle = COL.line;
+        ctx.fillStyle = COL.edge;
         ctx.fillRect(0, y + row.h - 1, NW, 1);
         var vtxt = "",
           vcol = COL.bright;
@@ -955,7 +1123,7 @@
                   : COL.bright;
           }
         }
-        ctx.font = "13px " + FONT;
+        ctx.font = "12px " + MONO;
         var vw = vtxt ? ctx.measureText(vtxt).width : 0;
         if (rec && (rec.status === "error" || rec.status === "warning")) {
           ctx.fillStyle = rec.status === "error" ? COL.red : COL.yellow;
@@ -963,7 +1131,7 @@
           ctx.arc(10, cy, 3.5, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.font = "15px " + FONT;
+        ctx.font = "13px " + MONO;
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, y, NW - vw - 14, row.h);
@@ -977,7 +1145,7 @@
         );
         ctx.restore();
         if (vtxt) {
-          ctx.font = "13px " + FONT;
+          ctx.font = "12px " + MONO;
           ctx.fillStyle = vcol;
           ctx.textAlign = "right";
           ctx.fillText(vtxt, NW - 8, cy);
@@ -993,7 +1161,7 @@
       ctx.fillRect(0, 0, S.w, RULER);
       ctx.fillStyle = COL.border;
       ctx.fillRect(0, RULER - 1, S.w, 1);
-      ctx.font = "13px " + FONT;
+      ctx.font = "12px " + MONO;
       ctx.fillStyle = COL.muted;
       ctx.textAlign = "left";
       ctx.fillText("time (" + ts.text + " / tick)", 10, RULER / 2);
@@ -1011,13 +1179,14 @@
           mt += minor;
         }
       }
+      ctx.font = "13px " + MONO;
       tk.list.forEach(function (t) {
         var x = Math.round(xOf(t));
         ctx.fillStyle = COL.bright;
-        ctx.fillRect(x, RULER - 9, 1, 8);
-        ctx.fillStyle = COL.muted;
+        ctx.fillRect(x, RULER - 10, 1, 9);
+        ctx.fillStyle = COL.text;
         ctx.textAlign = "left";
-        ctx.fillText(ft(t), x + 4, RULER - 15);
+        ctx.fillText(ft(t), x + 4, RULER - 18);
       });
       markers.forEach(function (f) {
         var x = xOf(f.time);
@@ -1027,7 +1196,7 @@
             ? COL.red
             : f.severity === "warning"
               ? COL.yellow
-              : COL.blue;
+              : COL.busLine;
         ctx.beginPath();
         ctx.moveTo(x - 4, 2);
         ctx.lineTo(x + 4, 2);
@@ -1036,19 +1205,34 @@
         ctx.fill();
       });
       [
-        ["A", S.cA, COL.blue],
-        ["B", S.cB, COL.yellow],
+        ["A", S.cA, COL.cursorA],
+        ["B", S.cB, COL.cursorB],
       ].forEach(function (c) {
         if (c[1] === null) return;
         var x = xOf(c[1]);
         if (x < NW || x > S.w) return;
         ctx.fillStyle = c[2];
-        ctx.fillRect(x - 7, 12, 14, 14);
-        ctx.fillStyle = "#0b0b11";
-        ctx.font = "bold 12px " + FONT;
+        ctx.fillRect(x - 7, 14, 14, 14);
+        ctx.fillStyle = COL.cursorText;
+        ctx.font = "bold 12px " + MONO;
         ctx.textAlign = "center";
-        ctx.fillText(c[0], x, 19);
+        ctx.fillText(c[0], x, 21);
       });
+      if (S.hoverT !== null) {
+        var hx = xOf(S.hoverT);
+        if (hx >= NW && hx <= S.w) {
+          var tt = ft(Math.round(S.hoverT));
+          ctx.font = "bold 13px " + MONO;
+          var bw = ctx.measureText(tt).width + 14;
+          var bx = Math.min(Math.max(hx - bw / 2, NW), S.w - bw - 2);
+          rr(bx, 6, bx + bw, 28, 4);
+          ctx.fillStyle = COL.bubble;
+          ctx.fill();
+          ctx.fillStyle = COL.bubbleText;
+          ctx.textAlign = "center";
+          ctx.fillText(tt, bx + bw / 2, 17);
+        }
+      }
       ctx.restore();
       ctx.textAlign = "left";
 
@@ -1057,9 +1241,9 @@
       if (S.totalH > viewH) {
         var th = Math.max(24, (viewH * viewH) / S.totalH);
         var ty = RULER + (S.scrollY / (S.totalH - viewH)) * (viewH - th);
-        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        ctx.fillStyle = COL.scrollTrack;
         ctx.fillRect(S.w - SBW, RULER, SBW, viewH);
-        ctx.fillStyle = "rgba(160,160,188,0.45)";
+        ctx.fillStyle = COL.scrollThumb;
         ctx.fillRect(S.w - SBW + 2, ty, SBW - 4, th);
         S.sb = { y: ty, h: th };
       }
@@ -1070,7 +1254,7 @@
       var W = wrap.clientWidth;
       if (W < 50) return;
       NW = W < 700 ? 170 : 270;
-      var H = Math.max(380, Math.min(640, window.innerHeight - 300));
+      var H = Math.max(420, Math.min(760, window.innerHeight - 260));
       var dpr = window.devicePixelRatio || 1;
       var cw = Math.round(W * dpr),
         ch = Math.round(H * dpr);
@@ -1292,7 +1476,21 @@
         S.scrollY = 0;
         rebuild();
         req();
+      } else if (a === "hs") {
+        S.hs = !S.hs;
+        b.classList.toggle("active", S.hs);
+        req();
+      } else if (a === "grid") {
+        S.grid = !S.grid;
+        b.classList.toggle("active", S.grid);
+        req();
       }
+    });
+    el.querySelector("#vwTheme").addEventListener("change", function (e) {
+      S.theme = e.target.value;
+      applyTheme(S.theme);
+      wrap.style.background = COL.bg;
+      req();
     });
     el.querySelector("#vwRadix").addEventListener("change", function (e) {
       S.radix = e.target.value;
